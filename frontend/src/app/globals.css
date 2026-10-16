@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "leaflet/dist/leaflet.css";
+
+/* Salesforce Lightning Design System (SLDS) Base Variables & Utilities */
+:root {
+  --slds-brand: #0176D3;
+  --slds-brand-hover: #005FB2;
+  --slds-brand-active: #014486;
+  --slds-bg-page: #f3f3f3;
+  --slds-bg-card: #ffffff;
+  --slds-border: #e5e5e5;
+  --slds-text-primary: #181818;
+  --slds-text-secondary: #5c5c5c;
+  --slds-success: #2e844a;
+  --slds-warning: #fe9339;
+  --slds-error: #ea001e;
+}
+
+body {
+  background-color: #f3f3f3;
+  color: #181818;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Leaflet Map styling to match Salesforce Maps */
+.leaflet-container {
+  font-family: inherit;
+  z-index: 1;
+}
+
+.custom-leaflet-marker {
+  background: transparent;
+  border: none;
+}
+
+/* Salesforce SLDS Popup Styling */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15) !important;
+  padding: 0 !important;
+  border: 1px solid #d8dde6 !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+.leaflet-popup-tip {
+  background: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Hide scrollbars for cleaner enterprise panels */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
