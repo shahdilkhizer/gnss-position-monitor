@@ -115,37 +115,41 @@ export default function HomePage() {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F4F6F9] text-[#1E293B]">
       {/* Navigation Header */}
-      <header className="h-14 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between shrink-0 shadow-sm z-20">
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">
-            <Radio className="w-5 h-5" />
+      <header className="h-14 bg-white border-b border-slate-200 px-3 sm:px-6 flex items-center justify-between shrink-0 shadow-sm z-20">
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm shrink-0">
+            <Radio className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
 
-          <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="font-bold text-base tracking-tight text-slate-900">
-                GNSS Position Monitor
+          <div className="min-w-0">
+            <div className="flex items-center space-x-1.5">
+              <h1 className="font-bold text-xs sm:text-base tracking-tight text-slate-900 whitespace-nowrap">
+                <span className="hidden sm:inline">GNSS Position Monitor</span>
+                <span className="sm:hidden">GNSS Monitor</span>
               </h1>
-              <span className="hidden sm:inline-block text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200">
-                Live System
+              <span className="hidden md:inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                Live
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 hidden sm:block">
+            <p className="text-[10px] text-slate-500 hidden sm:block truncate">
               Real-Time Location Tracking & Data Visualization
             </p>
           </div>
         </div>
 
         {/* Right Utility & Navigation Controls */}
-        <div className="flex items-center space-x-2 sm:space-x-4">
+        <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
           {/* Live Sync Status Indicator */}
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+          <div
+            className="flex items-center space-x-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs"
+            title={wsConnected ? "Live Sync Active" : "Connecting..."}
+          >
             <span
               className={`w-2 h-2 rounded-full ${
                 wsConnected ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
               }`}
             />
-            <span className="text-slate-600 font-medium">
+            <span className="text-slate-600 font-medium hidden md:inline text-xs">
               {wsConnected ? "Live Sync Active" : "Connecting..."}
             </span>
           </div>
@@ -154,18 +158,17 @@ export default function HomePage() {
           <Link
             href="/tracker"
             target="_blank"
-            className="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors"
+            className="flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors"
           >
-            <Smartphone className="w-4 h-4" />
+            <Smartphone className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Open GNSS Tracker</span>
-            <span className="sm:hidden">Tracker</span>
-            <ExternalLink className="w-3 h-3 opacity-70" />
+            <span className="sm:hidden text-[11px]">Tracker</span>
           </Link>
 
           {/* Mobile Drawer Toggle */}
           <button
             onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-slate-100 border border-slate-200 text-slate-700"
+            className="md:hidden p-1.5 rounded-lg hover:bg-slate-100 border border-slate-200 text-slate-700"
             title="Toggle Vehicle List"
           >
             <Menu className="w-4 h-4" />
