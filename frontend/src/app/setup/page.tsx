@@ -71,7 +71,7 @@ export default function SetupPage() {
       router.push("/");
     } catch (err: any) {
       console.error("Setup error:", err);
-      setError(err.message || "Failed to initialize system. Please verify FastAPI backend is running.");
+      setError(err.message || "Failed to initialize system. Please ensure the backend server is running.");
     } finally {
       setIsLoading(false);
     }
@@ -232,7 +232,7 @@ export default function SetupPage() {
         {/* Footer */}
         <div className="bg-slate-50 px-6 py-3.5 border-t border-slate-100 text-center">
           <p className="text-[11px] text-slate-500">
-            GNSS-Based Real-Time Position Monitoring System &bull; MySQL 8.0 &bull; FastAPI
+            GNSS-Based Real-Time Position Monitoring System &bull; System Onboarding Wizard
           </p>
         </div>
       </div>

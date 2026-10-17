@@ -607,8 +607,8 @@ export default function HomePage() {
             </div>
 
             <div className="p-3 border-t border-slate-200 bg-slate-50 text-[11px] text-slate-500 flex items-center justify-between">
-              <span>Leaflet &bull; MySQL 8.0 &bull; FastAPI</span>
-              <span className="font-mono text-slate-400">OpenStreetMap</span>
+              <span className="font-medium text-slate-600">GNSS Fleet Monitoring</span>
+              <span className="font-mono text-slate-400">v1.1.0</span>
             </div>
           </aside>
         )}

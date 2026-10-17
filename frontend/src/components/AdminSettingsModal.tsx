@@ -10,7 +10,6 @@ import {
   Trash2,
   CheckCircle2,
   AlertCircle,
-  Database,
   Globe,
   Mail,
   UserCheck,
@@ -38,7 +37,7 @@ interface AdminSettingsModalProps {
 
 export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUserUpdated }: AdminSettingsModalProps) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
-  const [activeTab, setActiveTab] = useState<"users" | "create" | "edit" | "system">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "create" | "edit">("users");
   const [isLoading, setIsLoading] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -125,7 +124,7 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
         throw new Error(data.detail || "Failed to update user.");
       }
 
-      setActionMsg({ type: "success", text: `User '${data.username}' updated successfully in MySQL.` });
+      setActionMsg({ type: "success", text: `User '${data.username}' updated successfully.` });
       if (onUserUpdated && currentUser && data.username === currentUser.username) {
         onUserUpdated(data);
       }
@@ -254,18 +253,6 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
               <span>Update: @{editingUser.username}</span>
             </button>
           )}
-
-          <button
-            onClick={() => setActiveTab("system")}
-            className={`px-4 py-2 border-b-2 transition-all flex items-center space-x-1.5 ${
-              activeTab === "system"
-                ? "border-blue-600 text-blue-600 bg-white rounded-t-lg shadow-2xs"
-                : "border-transparent text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Database className="w-4 h-4" />
-            <span>Database Status</span>
-          </button>
         </div>
 
         {/* Modal Content Body */}
@@ -605,34 +592,6 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
                 </button>
               </div>
             </form>
-          )}
-
-          {/* TAB 4: DATABASE STATUS */}
-          {activeTab === "system" && (
-            <div className="space-y-4 text-xs">
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                <div className="flex items-center space-x-2 text-slate-900 font-bold">
-                  <Database className="w-4 h-4 text-blue-600" />
-                  <span>Relational Persistence Engine</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-slate-600 font-mono text-[11px]">
-                  <div>Engine: <strong>MySQL 8.0 (InnoDB)</strong></div>
-                  <div>Database: <strong>gnss_db</strong></div>
-                  <div>Connection: <strong>localhost:3306</strong></div>
-                  <div>Driver: <strong>SQLAlchemy + PyMySQL</strong></div>
-                </div>
-              </div>
-
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 space-y-1">
-                <p className="font-bold flex items-center space-x-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Live Telemetry Protocol Active</span>
-                </p>
-                <p className="text-[11px] text-emerald-700">
-                  Native WebSockets (Full-Duplex) streaming telemetry coordinates into MySQL <code>location_logs</code> table.
-                </p>
-              </div>
-            </div>
           )}
         </div>
       </div>

@@ -80,7 +80,7 @@ function ResetPasswordForm() {
             <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
             <h3 className="text-sm font-bold text-emerald-900">Password Reset Successful!</h3>
             <p className="text-xs text-emerald-700">
-              Your credentials have been securely updated in MySQL. Redirecting to login portal...
+              Your password has been securely updated. Redirecting to login portal...
             </p>
           </div>
         ) : (

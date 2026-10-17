@@ -69,7 +69,7 @@ export default function LiveTrackingTray({
             <div>
               <h3 className="text-sm font-bold tracking-tight text-white">Live Tracking Mode</h3>
               <p className="text-[10px] text-slate-400 font-mono">
-                {isTracking ? "STREAMING TO CENTRAL MAP & MYSQL" : "STANDBY (READY TO TRANSMIT)"}
+                {isTracking ? "STREAMING LIVE POSITION TO CENTRAL MAP" : "STANDBY (READY TO TRANSMIT)"}
               </p>
             </div>
           </div>
