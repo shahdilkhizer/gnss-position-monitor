@@ -48,10 +48,29 @@ export default function LoginPage() {
         throw new Error(data.detail || "Authentication failed. Please verify credentials.");
       }
 
+      // Check if user exists in custom users to ensure display name is accurate
+      let finalUser = data.user;
+      try {
+        const rawCustom = localStorage.getItem("gnss_custom_users");
+        if (rawCustom) {
+          const list: any[] = JSON.parse(rawCustom);
+          const found = list.find((u) => u.username.toLowerCase() === username.trim().toLowerCase());
+          if (found) {
+            finalUser = {
+              ...finalUser,
+              full_name: found.full_name || found.username,
+              role: found.role || finalUser.role,
+              email: found.email || finalUser.email,
+              country: found.country || finalUser.country,
+            };
+          }
+        }
+      } catch (e) {}
+
       // Save user session
       localStorage.setItem("gnss_token", data.access_token);
-      localStorage.setItem("gnss_user", JSON.stringify(data.user));
-      localStorage.setItem("gnss_device_name", data.user.full_name || data.user.username);
+      localStorage.setItem("gnss_user", JSON.stringify(finalUser));
+      localStorage.setItem("gnss_device_name", finalUser.full_name || finalUser.username);
 
       // All roles land on the unified interactive map interface
       router.push("/");

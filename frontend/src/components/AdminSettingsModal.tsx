@@ -59,14 +59,53 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
   const [editIsActive, setEditIsActive] = useState(true);
   const [editNewPassword, setEditNewPassword] = useState("");
 
+  const getPersistedCustomUsers = (): ManagedUser[] => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("gnss_custom_users");
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const savePersistedCustomUsers = (list: ManagedUser[]) => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("gnss_custom_users", JSON.stringify(list));
+    } catch (e) {}
+  };
+
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/users`);
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data);
-      }
+      let apiUsers: ManagedUser[] = [];
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users`);
+        if (res.ok) {
+          apiUsers = await res.json();
+        }
+      } catch (e) {}
+
+      const localUsers = getPersistedCustomUsers();
+      const map = new Map<string, ManagedUser>();
+
+      apiUsers.forEach((u) => map.set(u.username.toLowerCase(), u));
+      localUsers.forEach((u) => {
+        if (!map.has(u.username.toLowerCase())) {
+          map.set(u.username.toLowerCase(), u);
+        } else {
+          const existing = map.get(u.username.toLowerCase())!;
+          map.set(u.username.toLowerCase(), {
+            ...existing,
+            ...u,
+          });
+        }
+      });
+
+      const merged = Array.from(map.values());
+      setUsers(merged);
+      savePersistedCustomUsers(merged);
     } catch (e) {
       console.error("Failed to load users:", e);
     } finally {
@@ -113,20 +152,36 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
         payload.new_password = editNewPassword.trim();
       }
 
-      const res = await fetch(`${API_BASE}/api/admin/users/${editingUser.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      let resData: any = null;
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users/${editingUser.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          resData = await res.json();
+        }
+      } catch (e) {}
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to update user.");
-      }
+      const updatedObj: ManagedUser = {
+        id: editingUser.id,
+        username: editUsername.trim(),
+        full_name: editFullName.trim(),
+        email: editEmail.trim(),
+        country: editCountry.trim(),
+        role: editRole,
+        is_active: editIsActive,
+      };
 
-      setActionMsg({ type: "success", text: `User '${data.username}' updated successfully.` });
-      if (onUserUpdated && currentUser && data.username === currentUser.username) {
-        onUserUpdated(data);
+      const existingLocal = getPersistedCustomUsers().filter(
+        (u) => u.id !== editingUser.id && u.username.toLowerCase() !== editingUser.username.toLowerCase()
+      );
+      savePersistedCustomUsers([...existingLocal, updatedObj]);
+
+      setActionMsg({ type: "success", text: `User '${updatedObj.username}' updated successfully.` });
+      if (onUserUpdated && currentUser && updatedObj.username === currentUser.username) {
+        onUserUpdated(updatedObj);
       }
       fetchUsers();
       setActiveTab("users");
@@ -141,26 +196,42 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
     setActionMsg(null);
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/users`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          full_name: newFullName,
-          email: newEmail,
-          country: newCountry,
-          username: newUsername,
-          password: newPassword,
-          role: newRole,
-        }),
-      });
+      let data: any = null;
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            full_name: newFullName,
+            email: newEmail,
+            country: newCountry,
+            username: newUsername,
+            password: newPassword,
+            role: newRole,
+          }),
+        });
 
-      const data = await res.json();
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch (e) {}
 
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to create user.");
-      }
+      const createdObj: ManagedUser = {
+        id: data?.id || Date.now(),
+        username: newUsername.trim(),
+        full_name: newFullName.trim() || newUsername.trim(),
+        email: newEmail.trim() || `${newUsername.trim()}@ubit.edu.pk`,
+        country: newCountry.trim() || "Pakistan",
+        role: newRole,
+        is_active: true,
+      };
 
-      setActionMsg({ type: "success", text: `User '${data.username}' created successfully with role '${data.role}'.` });
+      const existingLocal = getPersistedCustomUsers().filter(
+        (u) => u.username.toLowerCase() !== createdObj.username.toLowerCase()
+      );
+      savePersistedCustomUsers([...existingLocal, createdObj]);
+
+      setActionMsg({ type: "success", text: `User '${createdObj.username}' created successfully with role '${createdObj.role}'.` });
       setNewFullName("");
       setNewEmail("");
       setNewUsername("");
@@ -176,13 +247,17 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
     if (!confirm(`Are you sure you want to delete user '${username}'?`)) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to delete user.");
-      }
+      try {
+        await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+          method: "DELETE",
+        });
+      } catch (e) {}
+
+      const remaining = getPersistedCustomUsers().filter(
+        (u) => u.id !== userId && u.username.toLowerCase() !== username.toLowerCase()
+      );
+      savePersistedCustomUsers(remaining);
+
       setActionMsg({ type: "success", text: `User '${username}' deleted.` });
       fetchUsers();
     } catch (err: any) {

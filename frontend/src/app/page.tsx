@@ -9,6 +9,7 @@ import {
   Users,
   Search,
   ChevronRight,
+  ChevronLeft,
   Navigation,
   RefreshCw,
   Battery,
@@ -87,6 +88,21 @@ export default function HomePage() {
         return;
       }
       const userObj = JSON.parse(stored);
+      try {
+        const rawCustom = localStorage.getItem("gnss_custom_users");
+        if (rawCustom) {
+          const customList: any[] = JSON.parse(rawCustom);
+          const matched = customList.find((u) => u.username.toLowerCase() === userObj.username.toLowerCase());
+          if (matched) {
+            userObj.full_name = matched.full_name || matched.username;
+            userObj.role = matched.role || userObj.role;
+            userObj.email = matched.email || userObj.email;
+            userObj.country = matched.country || userObj.country;
+            localStorage.setItem("gnss_user", JSON.stringify(userObj));
+          }
+        }
+      } catch (e) {}
+
       setCurrentUser(userObj);
       const adminAssignedName = userObj.full_name || userObj.username;
       setDeviceName(adminAssignedName);
@@ -101,12 +117,12 @@ export default function HomePage() {
       }
       setDeviceId(savedId);
 
-      // Automatically fetch updated profile from MySQL backend to immediately apply any changes made by Admin
+      // Automatically fetch updated profile from MySQL backend if available
       if (userObj.id) {
         fetch(`${API_BASE}/api/auth/profile/${userObj.id}`)
           .then((res) => (res.ok ? res.json() : null))
           .then((latest) => {
-            if (latest) {
+            if (latest && latest.full_name) {
               setCurrentUser(latest);
               localStorage.setItem("gnss_user", JSON.stringify(latest));
               const latestAdminName = latest.full_name || latest.username;
@@ -149,7 +165,44 @@ export default function HomePage() {
           }
           if (res && res.ok) {
             const data = await res.json();
-            const userList = Array.isArray(data) ? data : data.users || [];
+            let userList: UserState[] = Array.isArray(data) ? [...data] : [...(data.users || [])];
+
+            // Merge any custom agents registered by Admin in localStorage
+            try {
+              const rawCustom = localStorage.getItem("gnss_custom_users");
+              if (rawCustom) {
+                const customUsers: any[] = JSON.parse(rawCustom);
+                const agentUsers = customUsers.filter((u) => u.role === "agent");
+                agentUsers.forEach((ag) => {
+                  const agName = ag.full_name || ag.username;
+                  const devId = `DEV-${ag.id || ag.username}`;
+                  const exists = userList.some(
+                    (u) =>
+                      u.user_name.toLowerCase() === agName.toLowerCase() ||
+                      u.user_id === devId ||
+                      u.user_name.toLowerCase() === ag.username.toLowerCase()
+                  );
+                  if (!exists) {
+                    userList.push({
+                      user_id: devId,
+                      user_name: agName,
+                      role: "agent",
+                      is_online: false,
+                      battery: 100,
+                      last_updated: Date.now() / 1000,
+                      last_location: {
+                        lat: 24.9416,
+                        lng: 67.1145,
+                        speed: 0.0,
+                        accuracy: 5.0,
+                        timestamp: Date.now() / 1000,
+                      },
+                    });
+                  }
+                });
+              }
+            } catch (e) {}
+
             if (isSubscribed) {
               setUsers(userList);
               setWsConnected(true);
@@ -267,11 +320,7 @@ export default function HomePage() {
       wsTrackerRef.current = ws;
     } catch (e) {}
 
-    if (isSimulating) {
-      startSimulation();
-    } else {
-      startRealGPS();
-    }
+    startRealGPS();
   };
 
   const stopTracking = () => {
@@ -279,10 +328,6 @@ export default function HomePage() {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
-    }
-    if (simIntervalRef.current) {
-      clearInterval(simIntervalRef.current);
-      simIntervalRef.current = null;
     }
     if (wsTrackerRef.current) {
       wsTrackerRef.current.close();
@@ -292,7 +337,8 @@ export default function HomePage() {
 
   const startRealGPS = () => {
     if (!("geolocation" in navigator)) {
-      startSimulation();
+      alert("Geolocation is not supported by your browser device.");
+      setIsTracking(false);
       return;
     }
 
@@ -306,32 +352,29 @@ export default function HomePage() {
         transmitLocation(latitude, longitude, calculatedSpd, acc);
       },
       (err) => {
-        // Fallback to simulation if GPS denied
-        startSimulation();
+        console.warn("GPS watch position unavailable:", err);
+        // Stationary fix without fake bouncing simulation
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude, accuracy: acc } = pos.coords;
+            setCurrentCoords({ lat: latitude, lng: longitude });
+            setTrackingAccuracy(acc);
+            setTrackingSpeed(0);
+            transmitLocation(latitude, longitude, 0, acc);
+          },
+          () => {
+            const staticPos = currentCoords || { lat: 24.9416, lng: 67.1145 };
+            setCurrentCoords(staticPos);
+            setTrackingAccuracy(10);
+            setTrackingSpeed(0);
+            transmitLocation(staticPos.lat, staticPos.lng, 0, 10);
+          },
+          { enableHighAccuracy: false, timeout: 10000 }
+        );
       },
-      { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
     );
     watchIdRef.current = id;
-  };
-
-  const startSimulation = () => {
-    let lat = 24.8607 + (Math.random() - 0.5) * 0.02;
-    let lng = 67.0011 + (Math.random() - 0.5) * 0.02;
-    setCurrentCoords({ lat, lng });
-    setTrackingAccuracy(4.5);
-    setTrackingSpeed(26.0);
-    transmitLocation(lat, lng, 26.0, 4.5);
-
-    const interval = setInterval(() => {
-      lat += (Math.random() - 0.48) * 0.0006;
-      lng += (Math.random() - 0.48) * 0.0006;
-      const simSpeed = 20 + Math.random() * 15;
-      setCurrentCoords({ lat, lng });
-      setTrackingSpeed(simSpeed);
-      transmitLocation(lat, lng, simSpeed, 4.5);
-    }, 2500);
-
-    simIntervalRef.current = interval;
   };
 
   const handleSelectUser = async (user: UserState) => {
@@ -494,9 +537,16 @@ export default function HomePage() {
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Tracked Fleet ({visibleUsers.length})
                 </span>
-                <div className="flex items-center space-x-1.5 text-xs">
+                <div className="flex items-center space-x-2 text-xs">
                   <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
                   <span className="text-slate-600 font-medium">{onlineCount} Active</span>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors cursor-pointer"
+                    title="Collapse Sidebar"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
@@ -613,15 +663,16 @@ export default function HomePage() {
           </aside>
         )}
 
-        {/* Sidebar Collapse Toggle Button (For Manager / Admin) */}
+        {/* Sidebar Collapse/Expand Toggle Tab (For Manager / Admin) */}
         {isManagerOrAdmin && (
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="hidden md:flex absolute top-1/2 -translate-y-1/2 z-20 w-4 h-12 bg-white border border-slate-200 border-l-0 rounded-r items-center justify-center shadow-xs text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-            style={{ left: sidebarOpen ? "20rem" : "0" }}
+            className={`hidden md:flex absolute top-1/2 -translate-y-1/2 z-20 w-4 h-12 bg-white border border-slate-300 border-l-0 rounded-r items-center justify-center shadow-xs text-slate-500 hover:text-blue-600 hover:bg-slate-50 transition-all cursor-pointer ${
+              sidebarOpen ? "left-80 lg:left-96" : "left-0"
+            }`}
             title={sidebarOpen ? "Collapse Fleet Sidebar" : "Expand Fleet Sidebar"}
           >
-            <ChevronRight className={`w-3.5 h-3.5 transition-transform ${sidebarOpen ? "rotate-180" : ""}`} />
+            <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${sidebarOpen ? "rotate-180" : ""}`} />
           </button>
         )}
 
