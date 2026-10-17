@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Minimize2,
   Maximize2,
+  Lock,
 } from "lucide-react";
 
 interface LiveTrackingTrayProps {
@@ -29,6 +30,7 @@ interface LiveTrackingTrayProps {
   onDeviceNameChange: (name: string) => void;
   onToggleTracking: () => void;
   onToggleSimulation: (enabled: boolean) => void;
+  isAdmin?: boolean;
 }
 
 export default function LiveTrackingTray({
@@ -45,6 +47,7 @@ export default function LiveTrackingTray({
   onDeviceNameChange,
   onToggleTracking,
   onToggleSimulation,
+  isAdmin = false,
 }: LiveTrackingTrayProps) {
   if (!isOpen) return null;
 
@@ -83,17 +86,46 @@ export default function LiveTrackingTray({
         <div className="p-4 space-y-3.5">
           {/* Device Identifier */}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-              Vehicle / Transmitter Name
-            </label>
-            <input
-              type="text"
-              disabled={isTracking}
-              value={deviceName}
-              onChange={(e) => onDeviceNameChange(e.target.value)}
-              placeholder="e.g. Field Vehicle 01"
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 disabled:opacity-60"
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Vehicle / Transmitter Name
+              </label>
+              {!isAdmin ? (
+                <span className="inline-flex items-center space-x-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                  <Lock className="w-2.5 h-2.5 mr-0.5" />
+                  <span>Admin Locked</span>
+                </span>
+              ) : (
+                <span className="text-[10px] text-blue-400 font-medium">Admin Editable</span>
+              )}
+            </div>
+
+            <div className="relative">
+              <input
+                type="text"
+                disabled={isTracking || !isAdmin}
+                readOnly={!isAdmin}
+                value={deviceName}
+                onChange={(e) => isAdmin && onDeviceNameChange(e.target.value)}
+                placeholder="e.g. Field Vehicle 01"
+                className={`w-full bg-slate-950 border rounded-lg px-2.5 py-1.5 text-xs text-white transition-all font-medium ${
+                  !isAdmin
+                    ? "border-slate-800 text-slate-300 bg-slate-950/70 cursor-not-allowed select-none pr-8 opacity-90"
+                    : "border-slate-700 focus:outline-none focus:border-blue-500"
+                } ${isTracking ? "opacity-60" : ""}`}
+              />
+              {!isAdmin && (
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                  <Lock className="w-3.5 h-3.5" />
+                </div>
+              )}
+            </div>
+
+            {!isAdmin && (
+              <p className="text-[10px] text-slate-500 mt-1 font-sans">
+                Transmitter name is configured by System Administrator.
+              </p>
+            )}
           </div>
 
           {/* Big Tactile Start / Stop Button */}

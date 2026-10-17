@@ -288,6 +288,22 @@ def delete_managed_user(user_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "success", "message": f"User {user.username} deleted successfully."}
 
+@app.get("/api/auth/profile/{user_id}", response_model=UserResponse)
+def get_user_profile(user_id: int, db: Session = Depends(get_db)):
+    """Fetch user profile directly from MySQL database"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+    return UserResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        role=user.role,
+        full_name=user.full_name,
+        country=user.country,
+        is_active=user.is_active
+    )
+
 @app.put("/api/auth/profile", response_model=UserResponse)
 def update_profile(req: UserProfileUpdateRequest, db: Session = Depends(get_db)):
     """Update profile information for the authenticated user (any role)"""

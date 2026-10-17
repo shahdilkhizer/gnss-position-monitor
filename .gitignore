@@ -39,5 +39,6 @@ yarn-error.log*
 # OS & Tools
 Thumbs.db
 .DS_Store
+*.tsbuildinfo
 .sf/
 .sfdx/

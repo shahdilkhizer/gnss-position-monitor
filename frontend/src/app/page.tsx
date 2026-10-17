@@ -88,7 +88,11 @@ export default function HomePage() {
       }
       const userObj = JSON.parse(stored);
       setCurrentUser(userObj);
-      setDeviceName(userObj.full_name || userObj.username);
+      const adminAssignedName = userObj.full_name || userObj.username;
+      setDeviceName(adminAssignedName);
+
+      // Always ensure localStorage has the official admin-configured name
+      localStorage.setItem("gnss_device_name", adminAssignedName);
 
       let savedId = localStorage.getItem("gnss_device_id");
       if (!savedId) {
@@ -96,6 +100,22 @@ export default function HomePage() {
         localStorage.setItem("gnss_device_id", savedId);
       }
       setDeviceId(savedId);
+
+      // Automatically fetch updated profile from MySQL backend to immediately apply any changes made by Admin
+      if (userObj.id) {
+        fetch(`${API_BASE}/api/auth/profile/${userObj.id}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((latest) => {
+            if (latest) {
+              setCurrentUser(latest);
+              localStorage.setItem("gnss_user", JSON.stringify(latest));
+              const latestAdminName = latest.full_name || latest.username;
+              setDeviceName(latestAdminName);
+              localStorage.setItem("gnss_device_name", latestAdminName);
+            }
+          })
+          .catch(() => null);
+      }
 
       // Check battery
       if (typeof navigator !== "undefined" && "getBattery" in navigator) {
@@ -667,9 +687,12 @@ export default function HomePage() {
         pingCount={pingCount}
         currentCoords={currentCoords}
         deviceName={deviceName}
+        isAdmin={isAdmin}
         onDeviceNameChange={(name) => {
-          setDeviceName(name);
-          localStorage.setItem("gnss_device_name", name);
+          if (isAdmin) {
+            setDeviceName(name);
+            localStorage.setItem("gnss_device_name", name);
+          }
         }}
         onToggleTracking={isTracking ? stopTracking : startTracking}
         onToggleSimulation={(enabled) => setIsSimulating(enabled)}

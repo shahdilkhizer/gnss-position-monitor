@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   User,
   LogOut,
+  Lock,
 } from "lucide-react";
 
 export default function TrackerPage() {
@@ -29,7 +30,7 @@ export default function TrackerPage() {
   const [pingCount, setPingCount] = useState<number>(0);
   const [batteryLevel, setBatteryLevel] = useState<number>(95);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<{ username: string; role: string; full_name?: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id?: number; username: string; role: string; full_name?: string } | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const watchIdRef = useRef<number | null>(null);
@@ -42,7 +43,25 @@ export default function TrackerPage() {
       if (stored) {
         const u = JSON.parse(stored);
         setCurrentUser(u);
-        setUserName(u.full_name || u.username);
+        const adminName = u.full_name || u.username;
+        setUserName(adminName);
+        localStorage.setItem("gnss_device_name", adminName);
+
+        // Fetch latest profile from MySQL backend to immediately apply admin name updates
+        if (u.id) {
+          fetch(`${API_BASE}/api/auth/profile/${u.id}`)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((latest) => {
+              if (latest) {
+                setCurrentUser(latest);
+                localStorage.setItem("gnss_user", JSON.stringify(latest));
+                const latestAdminName = latest.full_name || latest.username;
+                setUserName(latestAdminName);
+                localStorage.setItem("gnss_device_name", latestAdminName);
+              }
+            })
+            .catch(() => null);
+        }
       }
     } catch (e) {}
 
@@ -52,9 +71,6 @@ export default function TrackerPage() {
       localStorage.setItem("gnss_device_id", savedId);
     }
     setUserId(savedId);
-
-    const savedName = localStorage.getItem("gnss_device_name");
-    if (savedName) setUserName(savedName);
 
     if (typeof navigator !== "undefined" && "getBattery" in navigator) {
       (navigator as any).getBattery().then((battery: any) => {
@@ -67,8 +83,10 @@ export default function TrackerPage() {
   }, []);
 
   const handleNameChange = (name: string) => {
-    setUserName(name);
-    localStorage.setItem("gnss_device_name", name);
+    if (currentUser?.role === "admin") {
+      setUserName(name);
+      localStorage.setItem("gnss_device_name", name);
+    }
   };
 
   const transmitLocation = async (lat: number, lng: number, spd: number, acc: number) => {
@@ -286,16 +304,46 @@ export default function TrackerPage() {
         {/* Card Body */}
         <div className="p-5 space-y-4">
           <div>
-            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Vehicle / Device Identifier
-            </label>
-            <input
-              type="text"
-              value={userName}
-              disabled={isTracking}
-              onChange={(e) => handleNameChange(e.target.value)}
-              className="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 font-medium disabled:opacity-60"
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                Vehicle / Device Identifier
+              </label>
+              {currentUser?.role !== "admin" ? (
+                <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 flex items-center space-x-1">
+                  <Lock className="w-2.5 h-2.5 mr-0.5" />
+                  <span>Admin Locked</span>
+                </span>
+              ) : (
+                <span className="text-[10px] text-blue-400 font-medium">Admin Editable</span>
+              )}
+            </div>
+
+            <div className="relative">
+              <input
+                type="text"
+                value={userName}
+                disabled={isTracking || currentUser?.role !== "admin"}
+                readOnly={currentUser?.role !== "admin"}
+                onChange={(e) => handleNameChange(e.target.value)}
+                className={`w-full bg-slate-900/80 border rounded-lg px-3 py-2 text-sm text-white font-medium transition-all ${
+                  currentUser?.role !== "admin"
+                    ? "border-slate-800 text-slate-300 bg-slate-950/70 cursor-not-allowed select-none pr-8 opacity-90"
+                    : "border-slate-700 focus:outline-none focus:border-blue-500"
+                } ${isTracking ? "opacity-60" : ""}`}
+              />
+              {currentUser?.role !== "admin" && (
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                  <Lock className="w-3.5 h-3.5" />
+                </div>
+              )}
+            </div>
+
+            {currentUser?.role !== "admin" && (
+              <p className="text-[10px] text-slate-500 mt-1">
+                Vehicle transmitter name is set by Administrator and locked for drivers.
+              </p>
+            )}
+
             <div className="flex justify-between items-center mt-1 text-[11px] text-slate-500 font-mono">
               <span>Hardware ID: {userId}</span>
               <span>Battery: {batteryLevel}%</span>
