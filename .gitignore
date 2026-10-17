@@ -22,6 +22,9 @@ frontend/.vercel/
 
 # Local Testing Stubs (Untracked for Pure GitHub Repo)
 frontend/src/app/api/
+frontend/src/lib/serverlessStore.ts
+frontend/.vercelignore
+
 
 # Logs
 *.log

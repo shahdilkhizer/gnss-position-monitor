@@ -17,8 +17,29 @@ export interface UserState {
   battery?: number;
 }
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-export const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
+const getApiBase = (): string => {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") {
+    if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+      return "";
+    }
+  }
+  return "http://localhost:8000";
+};
+
+const getWsBase = (): string => {
+  if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
+  if (typeof window !== "undefined") {
+    if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${proto}//${window.location.host}`;
+    }
+  }
+  return "ws://localhost:8000";
+};
+
+export const API_BASE = getApiBase();
+export const WS_BASE = getWsBase();
 
 export async function fetchUsers(): Promise<UserState[]> {
   try {
