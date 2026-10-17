@@ -5,6 +5,9 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.db
+*.sqlite
+*.sqlite3
 
 # Node.js & Next.js
 frontend/node_modules/
@@ -14,6 +17,11 @@ frontend/.next/
 out/
 build/
 dist/
+.vercel/
+frontend/.vercel/
+
+# Local Testing Stubs (Untracked for Pure GitHub Repo)
+frontend/src/app/api/
 
 # Logs
 *.log
@@ -33,4 +41,3 @@ Thumbs.db
 .DS_Store
 .sf/
 .sfdx/
-
