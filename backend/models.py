@@ -109,6 +109,22 @@ class UserCreateAdminRequest(BaseModel):
     full_name: Optional[str] = None
     country: Optional[str] = "Pakistan"
 
+class UserProfileUpdateRequest(BaseModel):
+    user_id: int
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    country: Optional[str] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = None
+
+class AdminUserUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    country: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+    new_password: Optional[str] = None
+
 class UserResponse(BaseModel):
     id: int
     username: str

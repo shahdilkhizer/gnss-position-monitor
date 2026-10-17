@@ -22,9 +22,11 @@ import {
   Settings,
   Power,
   Sliders,
+  Edit3,
 } from "lucide-react";
 import AdminSettingsModal from "@/components/AdminSettingsModal";
 import LiveTrackingTray from "@/components/LiveTrackingTray";
+import UserProfileModal from "@/components/UserProfileModal";
 
 const LiveMap = dynamic(() => import("@/components/LiveMap"), {
   ssr: false,
@@ -60,6 +62,8 @@ export default function HomePage() {
 
   // Admin In-Place Settings Modal
   const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
+  // User Profile & Info Update Modal
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // In-Place Live Tracking State (No Page Reload)
   const [isTrackingTrayOpen, setIsTrackingTrayOpen] = useState(false);
@@ -422,19 +426,29 @@ export default function HomePage() {
 
           {/* User Profile Badge & Logout */}
           {currentUser && (
-            <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
-              <div className="hidden lg:flex flex-col text-right">
-                <span className="text-xs font-bold text-slate-900 leading-tight">
-                  {currentUser.full_name || currentUser.username}
-                </span>
-                <span className="text-[10px] text-blue-600 font-semibold uppercase tracking-wider">
-                  {currentUser.role === "admin"
-                    ? "System Admin"
-                    : currentUser.role === "manager"
-                    ? "Fleet Manager"
-                    : "Field Agent"}
-                </span>
-              </div>
+            <div className="flex items-center space-x-1.5 sm:space-x-2 pl-2 border-l border-slate-200">
+              <button
+                onClick={() => setIsProfileModalOpen(true)}
+                className="flex items-center space-x-2 py-1 px-1.5 sm:px-2 rounded-lg hover:bg-slate-100 transition-colors text-left"
+                title="Click to Update Profile & Credentials"
+              >
+                <div className="w-7 h-7 rounded-full bg-blue-100 border border-blue-300 flex items-center justify-center text-blue-700 font-bold text-xs shrink-0 shadow-2xs">
+                  {(currentUser.full_name || currentUser.username).charAt(0).toUpperCase()}
+                </div>
+                <div className="hidden lg:flex flex-col text-left">
+                  <span className="text-xs font-bold text-slate-900 leading-tight flex items-center space-x-1">
+                    <span>{currentUser.full_name || currentUser.username}</span>
+                    <Edit3 className="w-2.5 h-2.5 text-blue-500" />
+                  </span>
+                  <span className="text-[10px] text-blue-600 font-semibold uppercase tracking-wider">
+                    {currentUser.role === "admin"
+                      ? "System Admin"
+                      : currentUser.role === "manager"
+                      ? "Fleet Manager"
+                      : "Field Agent"} &bull; <span className="underline">Update Info</span>
+                  </span>
+                </div>
+              </button>
 
               <button
                 onClick={handleLogout}
@@ -683,6 +697,17 @@ export default function HomePage() {
           currentUser={currentUser}
         />
       )}
+
+      {/* In-Place User Profile & Credentials Update Modal (Available for all roles) */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        currentUser={currentUser}
+        onProfileUpdated={(updated) => {
+          setCurrentUser(updated);
+          setDeviceName(updated.full_name || updated.username);
+        }}
+      />
 
       {/* Mobile Drawer (For Manager/Admin on Phones) */}
       {mobileDrawerOpen && isManagerOrAdmin && (

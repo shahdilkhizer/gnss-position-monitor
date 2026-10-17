@@ -13,7 +13,7 @@ from models import (
     User, LocationLog,
     UserState, LocationPoint,
     UserLoginRequest, SystemSetupRequest, ForgotPasswordRequest, ResetPasswordRequest,
-    UserCreateAdminRequest, UserResponse, TokenResponse
+    UserCreateAdminRequest, UserProfileUpdateRequest, AdminUserUpdateRequest, UserResponse, TokenResponse
 )
 from auth import hash_password, verify_password, create_access_token
 from connection_manager import manager
@@ -287,6 +287,87 @@ def delete_managed_user(user_id: int, db: Session = Depends(get_db)):
     db.delete(user)
     db.commit()
     return {"status": "success", "message": f"User {user.username} deleted successfully."}
+
+@app.put("/api/auth/profile", response_model=UserResponse)
+def update_profile(req: UserProfileUpdateRequest, db: Session = Depends(get_db)):
+    """Update profile information for the authenticated user (any role)"""
+    user = db.query(User).filter(User.id == req.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    if req.email and req.email != user.email:
+        clean_email = req.email.strip().lower()
+        conflict = db.query(User).filter(User.email == clean_email, User.id != user.id).first()
+        if conflict:
+            raise HTTPException(status_code=400, detail="Email is already registered with another account.")
+        user.email = clean_email
+
+    if req.full_name is not None and req.full_name.strip():
+        user.full_name = req.full_name.strip()
+    if req.country is not None and req.country.strip():
+        user.country = req.country.strip()
+
+    # Optional password change
+    if req.new_password:
+        if not req.current_password or not verify_password(req.current_password, user.password_hash):
+            raise HTTPException(status_code=400, detail="Current password verification failed.")
+        if len(req.new_password) < 6:
+            raise HTTPException(status_code=400, detail="New password must be at least 6 characters.")
+        user.password_hash = hash_password(req.new_password)
+
+    db.commit()
+    db.refresh(user)
+
+    return UserResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        role=user.role,
+        full_name=user.full_name,
+        country=user.country,
+        is_active=user.is_active
+    )
+
+@app.put("/api/admin/users/{user_id}", response_model=UserResponse)
+def admin_update_user(user_id: int, req: AdminUserUpdateRequest, db: Session = Depends(get_db)):
+    """Admin endpoint to update any user's profile, role, status, or reset their password"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if req.email and req.email != user.email:
+        clean_email = req.email.strip().lower()
+        conflict = db.query(User).filter(User.email == clean_email, User.id != user.id).first()
+        if conflict:
+            raise HTTPException(status_code=400, detail="Email is already assigned to another account.")
+        user.email = clean_email
+
+    if req.full_name is not None and req.full_name.strip():
+        user.full_name = req.full_name.strip()
+    if req.country is not None and req.country.strip():
+        user.country = req.country.strip()
+    if req.role is not None:
+        role_val = req.role.lower() if req.role.lower() in ["admin", "manager", "agent"] else "agent"
+        user.role = role_val
+    if req.is_active is not None:
+        user.is_active = req.is_active
+    if req.new_password:
+        if len(req.new_password) < 6:
+            raise HTTPException(status_code=400, detail="New password must be at least 6 characters.")
+        user.password_hash = hash_password(req.new_password)
+
+    db.commit()
+    db.refresh(user)
+
+    return UserResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        role=user.role,
+        full_name=user.full_name,
+        country=user.country,
+        is_active=user.is_active
+    )
 
 # ================= GNSS TELEMETRY & ROUTE HISTORY =================
 

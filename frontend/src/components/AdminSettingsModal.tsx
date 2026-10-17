@@ -14,6 +14,8 @@ import {
   Globe,
   Mail,
   UserCheck,
+  Edit2,
+  Save,
 } from "lucide-react";
 import { API_BASE } from "@/lib/api";
 
@@ -35,7 +37,7 @@ interface AdminSettingsModalProps {
 
 export default function AdminSettingsModal({ isOpen, onClose, currentUser }: AdminSettingsModalProps) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
-  const [activeTab, setActiveTab] = useState<"users" | "create" | "system">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "create" | "edit" | "system">("users");
   const [isLoading, setIsLoading] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -46,6 +48,15 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser }: Adm
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState("agent");
+
+  // Form state for editing existing user
+  const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
+  const [editFullName, setEditFullName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editCountry, setEditCountry] = useState("Pakistan");
+  const [editRole, setEditRole] = useState("agent");
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [editNewPassword, setEditNewPassword] = useState("");
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -68,6 +79,56 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser }: Adm
       setActionMsg(null);
     }
   }, [isOpen]);
+
+  const startEditUser = (user: ManagedUser) => {
+    setEditingUser(user);
+    setEditFullName(user.full_name || user.username);
+    setEditEmail(user.email || "");
+    setEditCountry(user.country || "Pakistan");
+    setEditRole(user.role);
+    setEditIsActive(user.is_active);
+    setEditNewPassword("");
+    setActionMsg(null);
+    setActiveTab("edit");
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setActionMsg(null);
+
+    try {
+      const payload: any = {
+        full_name: editFullName.trim(),
+        email: editEmail.trim(),
+        country: editCountry.trim(),
+        role: editRole,
+        is_active: editIsActive,
+      };
+
+      if (editNewPassword.trim()) {
+        payload.new_password = editNewPassword.trim();
+      }
+
+      const res = await fetch(`${API_BASE}/api/admin/users/${editingUser.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Failed to update user.");
+      }
+
+      setActionMsg({ type: "success", text: `User '${data.username}' updated successfully in MySQL.` });
+      fetchUsers();
+      setActiveTab("users");
+      setEditingUser(null);
+    } catch (err: any) {
+      setActionMsg({ type: "error", text: err.message || "Failed to save user updates." });
+    }
+  };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,8 +196,8 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser }: Adm
               <Shield className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-tight">System Settings & Administration</h2>
-              <p className="text-xs text-slate-400">Role-Based Access Control & User Provisioning</p>
+              <h2 className="text-base font-bold text-white tracking-tight">System Administration</h2>
+              <p className="text-xs text-slate-400">User Provisioning & Information Management</p>
             </div>
           </div>
           <button
@@ -158,8 +219,9 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser }: Adm
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Manage Users ({users.length})</span>
+            <span>All Users ({users.length})</span>
           </button>
+
           <button
             onClick={() => setActiveTab("create")}
             className={`px-4 py-2 border-b-2 transition-all flex items-center space-x-1.5 ${
@@ -169,8 +231,23 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser }: Adm
             }`}
           >
             <UserPlus className="w-4 h-4" />
-            <span>Add New User</span>
+            <span>Add User</span>
           </button>
+
+          {editingUser && (
+            <button
+              onClick={() => setActiveTab("edit")}
+              className={`px-4 py-2 border-b-2 transition-all flex items-center space-x-1.5 ${
+                activeTab === "edit"
+                  ? "border-blue-600 text-blue-600 bg-white rounded-t-lg shadow-2xs"
+                  : "border-transparent text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Edit2 className="w-4 h-4" />
+              <span>Update: @{editingUser.username}</span>
+            </button>
+          )}
+
           <button
             onClick={() => setActiveTab("system")}
             className={`px-4 py-2 border-b-2 transition-all flex items-center space-x-1.5 ${
@@ -203,18 +280,19 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser }: Adm
             </div>
           )}
 
+          {/* TAB 1: USER LIST WITH EDIT & DELETE */}
           {activeTab === "users" && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <p className="text-xs text-slate-500">
-                  Provisioned system accounts with active access tokens and assigned roles.
+                  Click the <strong>Edit (Pencil)</strong> icon on any user to update their name, role, email, or credentials.
                 </p>
                 <button
                   onClick={() => setActiveTab("create")}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-xs"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
-                  <span>Create User</span>
+                  <span>New User</span>
                 </button>
               </div>
 
@@ -226,7 +304,7 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser }: Adm
                       <th className="p-3">Role</th>
                       <th className="p-3">Email</th>
                       <th className="p-3">Country</th>
-                      <th className="p-3 text-right">Actions</th>
+                      <th className="p-3 text-right">Update / Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -251,11 +329,18 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser }: Adm
                         </td>
                         <td className="p-3 text-slate-500 font-mono text-[11px]">{u.email || "--"}</td>
                         <td className="p-3 text-slate-500">{u.country || "Pakistan"}</td>
-                        <td className="p-3 text-right">
+                        <td className="p-3 text-right space-x-1">
+                          <button
+                            onClick={() => startEditUser(u)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            title="Update User Information"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
                           {u.username !== currentUser?.username && (
                             <button
                               onClick={() => handleDeleteUser(u.id, u.username)}
-                              className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                               title="Delete User"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -270,6 +355,120 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser }: Adm
             </div>
           )}
 
+          {/* TAB 2: UPDATE USER (EDIT USER FORM) */}
+          {activeTab === "edit" && editingUser && (
+            <form onSubmit={handleUpdateUser} className="space-y-4 max-w-xl mx-auto">
+              <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center justify-between">
+                <div>
+                  Updating Account: <strong className="font-mono">@{editingUser.username}</strong>
+                </div>
+                <span className="text-[10px] uppercase font-bold text-blue-600">ID: {editingUser.id}</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wider">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wider">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wider">
+                    Role Privilege
+                  </label>
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
+                  >
+                    <option value="agent">Field Agent (Driver)</option>
+                    <option value="manager">Fleet Manager</option>
+                    <option value="admin">System Administrator</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wider">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    value={editCountry}
+                    onChange={(e) => setEditCountry(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wider">
+                    Account Status
+                  </label>
+                  <select
+                    value={editIsActive ? "active" : "inactive"}
+                    onChange={(e) => setEditIsActive(e.target.value === "active")}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
+                  >
+                    <option value="active">Active (Access Allowed)</option>
+                    <option value="inactive">Suspended (Access Blocked)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wider">
+                  Reset Password (Leave blank to keep current)
+                </label>
+                <input
+                  type="password"
+                  value={editNewPassword}
+                  onChange={(e) => setEditNewPassword(e.target.value)}
+                  placeholder="Enter new password if updating"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("users");
+                    setEditingUser(null);
+                  }}
+                  className="px-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-sm"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save User Information</span>
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* TAB 3: CREATE NEW USER */}
           {activeTab === "create" && (
             <form onSubmit={handleCreateUser} className="space-y-4 max-w-xl mx-auto">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -375,6 +574,7 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser }: Adm
             </form>
           )}
 
+          {/* TAB 4: DATABASE STATUS */}
           {activeTab === "system" && (
             <div className="space-y-4 text-xs">
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
