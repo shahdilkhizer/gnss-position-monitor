@@ -10,17 +10,22 @@ CREATE DATABASE IF NOT EXISTS `gnss_db`
 USE `gnss_db`;
 
 -- --------------------------------------------------------------
--- Table 1: Users (Role-based Authentication: Manager & Driver)
+-- Table 1: Users (Multi-Role Access: Admin, Manager, Agent)
 -- --------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `username` VARCHAR(50) NOT NULL UNIQUE,
+  `email` VARCHAR(100) NULL UNIQUE,
   `password_hash` VARCHAR(255) NOT NULL,
-  `role` VARCHAR(20) NOT NULL DEFAULT 'driver', -- 'manager' or 'driver'
+  `role` VARCHAR(20) NOT NULL DEFAULT 'agent', -- 'admin', 'manager', 'agent'
   `full_name` VARCHAR(100) NULL,
+  `country` VARCHAR(100) NULL DEFAULT 'Pakistan',
   `is_active` BOOLEAN NOT NULL DEFAULT TRUE,
+  `reset_token` VARCHAR(255) NULL,
+  `reset_token_expires` DATETIME NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_users_username` (`username`),
+  INDEX `idx_users_email` (`email`),
   INDEX `idx_users_role` (`role`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -41,13 +46,3 @@ CREATE TABLE IF NOT EXISTS `location_logs` (
   INDEX `idx_logs_device_id` (`device_id`),
   INDEX `idx_logs_recorded_at` (`recorded_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------------
--- Sample Seed Data (Default System Credentials)
--- Manager:  username: manager  | password: admin123
--- Driver:   username: driver1  | password: driver123
--- (Bcrypt hashed passwords)
--- --------------------------------------------------------------
-INSERT IGNORE INTO `users` (`id`, `username`, `password_hash`, `role`, `full_name`) VALUES
-(1, 'manager', '$2b$12$K1r6tE16FpW3j7R9c.7N/.qX3CjG1yM5Xm1cQcWJ2G8dD7yqW5jWy', 'manager', 'Fleet Operations Manager'),
-(2, 'driver1', '$2b$12$4mU8bQ99e3Q3r7Z5c.1K/.rV2LkK2zN6Yn2dRdXK3H9eE8zrX6kXz', 'driver', 'Vehicle 01 - Field Driver');

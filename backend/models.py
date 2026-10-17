@@ -13,18 +13,25 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
+    email = Column(String(100), unique=True, index=True, nullable=True)
     password_hash = Column(String(255), nullable=False)
-    role = Column(String(20), nullable=False, default="driver") # 'manager' or 'driver'
+    role = Column(String(20), nullable=False, default="agent") # 'admin', 'manager', 'agent'
     full_name = Column(String(100), nullable=True)
+    country = Column(String(100), nullable=True, default="Pakistan")
     is_active = Column(Boolean, default=True)
+    reset_token = Column(String(255), nullable=True)
+    reset_token_expires = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=func.now())
 
     def to_dict(self):
         return {
             "id": self.id,
             "username": self.username,
+            "email": self.email,
             "role": self.role,
             "full_name": self.full_name or self.username,
+            "country": self.country,
+            "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
@@ -70,27 +77,46 @@ class LocationPoint(BaseModel):
 class UserState(BaseModel):
     user_id: str
     user_name: str
-    role: str = "driver"
+    role: str = "agent"
     is_online: bool = True
     last_location: Optional[LocationPoint] = None
     last_updated: float = Field(default_factory=time.time)
     battery: Optional[int] = 100
 
-class UserRegisterRequest(BaseModel):
-    username: str
-    password: str
-    role: str = "driver" # 'manager' or 'driver'
-    full_name: Optional[str] = None
-
 class UserLoginRequest(BaseModel):
     username: str
     password: str
 
+class SystemSetupRequest(BaseModel):
+    full_name: str
+    email: str
+    country: str = "Pakistan"
+    username: str
+    password: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+class UserCreateAdminRequest(BaseModel):
+    username: str
+    password: str
+    role: str = "agent" # 'admin', 'manager', 'agent'
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    country: Optional[str] = "Pakistan"
+
 class UserResponse(BaseModel):
     id: int
     username: str
+    email: Optional[str] = None
     role: str
     full_name: Optional[str] = None
+    country: Optional[str] = None
+    is_active: bool = True
 
 class TokenResponse(BaseModel):
     access_token: str

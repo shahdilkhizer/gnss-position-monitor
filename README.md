@@ -1,21 +1,23 @@
 # GNSS-Based Real-Time Position Monitoring and Data Visualization System
 
-A high-performance real-time location monitoring and telemetry visualization platform built with **Python (FastAPI)**, **Next.js**, **WebSockets**, **Leaflet.js**, and **MySQL**.
+A high-performance real-time location monitoring and telemetry visualization platform built with **Python (FastAPI)**, **Next.js**, **WebSockets**, **Leaflet.js**, and **MySQL 8.0**.
 
 ---
 
 ## 📌 Project Overview
 
-This project implements a real-time web-based position monitoring system for tracking moving vehicles and field devices on an interactive digital map. It features ultra-low latency coordinate streaming over WebSockets, persistent historical breadcrumb routes stored in a relational database, role-based authentication, and a built-in software-based GNSS location simulator.
+This project implements an enterprise-grade real-time position monitoring system for tracking vehicles and field devices on an interactive digital map canvas. It features ultra-low latency coordinate streaming over WebSockets, relational database persistence, multi-role access control, in-place live tracking without page reload, an administrative user provisioning suite, and a built-in software GNSS kinematic simulator.
 
-### Core Capabilities
-* **Live Position Tracking:** Continuous real-time coordinate streaming directly onto an OpenStreetMap canvas.
-* **Relational Persistence:** Automated coordinate logging and telemetry archiving using MySQL.
-* **Role-Based Access Control:** Distinct authentication workflows for Fleet Managers (monitoring map) and Drivers (transmitters).
-* **GNSS Data Simulation:** Generates realistic kinematic movement data (latitude, longitude, speed, heading) for testing and demonstrations without requiring physical GPS hardware.
-* **Movement History & Breadcrumbs:** Visualizes traveled routes using historical polyline trails queried from the database.
-* **Telemetry Monitoring:** Tracks speed (km/h), connection state, transmission packet count, and device battery level.
-* **Responsive Architecture:** Fully optimized for desktop workstations, tablets, and mobile devices.
+### Core Architecture & Capabilities
+* **Single Unified Map Canvas:** All users land on an interactive OpenStreetMap interface with role-tailored viewports:
+  * **System Administrator:** Full fleet map + live telemetry sidebar + in-place system settings modal for user and role provisioning.
+  * **Fleet Operations Manager:** Full fleet map + live telemetry sidebar + real-time vehicle breadcrumb tracking.
+  * **Field Agent / Driver:** Clean focused map canvas (without competitor fleet clutter) + in-place Live Tracking control tray.
+* **In-Place Live Tracking Mode:** Users can toggle live position broadcasting, inspect speed/battery metrics, and switch to GNSS simulation mode directly on the map interface with **zero page reload**.
+* **First-Time Installation Wizard (`/setup`):** Guided onboarding workflow to configure the primary Root System Administrator account upon initial system deployment.
+* **Role-Based Access Control (RBAC):** Distinct privilege sets for `admin`, `manager`, and `agent` accounts.
+* **Credential Recovery Policy (`/forgot-password`):** Verified password reset workflow for administrators, and formal administrative authorization directives for staff members.
+* **Persistent Telemetry Logs:** High-frequency GNSS coordinates and telemetry packets archived directly into MySQL 8.0 (`location_logs` table).
 
 ---
 
@@ -32,24 +34,23 @@ This project implements a real-time web-based position monitoring system for tra
 
 ## 📋 Prerequisites
 
-Ensure the following tools are installed on your machine before running the project:
+Ensure the following tools are installed on your machine:
 1. **Node.js** (v18.0 or higher) & **npm**
 2. **Python** (v3.10 or higher)
 3. **MySQL Server** (v8.0+ or XAMPP / MariaDB)
 
 ---
 
-## 🗄️ Database Setup (MySQL)
+## 🗄️ Database Setup (MySQL 8.0)
 
-### Step 1: Ensure MySQL Server is Running
-Make sure your MySQL service is active (via Windows Services `MySQL80` or XAMPP Control Panel).
+### Step 1: Ensure MySQL Service is Active
+Verify that the MySQL service is running (via Windows Services `MySQL80` or XAMPP Control Panel).
 
 ### Step 2: Database Initialization
-The application can automatically create the required database `gnss_db` and tables upon backend startup. 
+The application will automatically verify and create the required database `gnss_db` and tables upon backend startup.
 
-Alternatively, you can manually import the provided schema script:
-```bash
-# Using MySQL Command Line or PowerShell:
+Alternatively, you can manually import the provided SQL script:
+```powershell
 mysql -u root -p < database/schema.sql
 ```
 
@@ -64,11 +65,10 @@ MYSQL_DB=gnss_db
 
 JWT_SECRET=gnss_super_secret_university_key_2026
 ```
-> **Note:** If MySQL credentials are not provided or the service is temporarily unreachable, the backend includes an intelligent fallback mechanism to SQLite (`gnss_local.db`) to ensure uninterrupted presentation evaluation without system crashes.
 
 ---
 
-## 🚀 Step-by-Step Execution Guide
+## 🚀 Execution Guide
 
 ### 1. Start the Backend API Server (Python FastAPI)
 
@@ -80,10 +80,6 @@ cd backend
 python -m venv venv
 .\venv\Scripts\activate
 
-# On macOS/Linux:
-# python3 -m venv venv
-# source venv/bin/activate
-
 # Install required dependencies
 pip install -r requirements.txt
 
@@ -91,7 +87,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 * **Backend API:** `http://localhost:8000`
-* **Interactive API Documentation (Swagger UI):** `http://localhost:8000/docs`
+* **Swagger UI API Docs:** `http://localhost:8000/docs`
 
 ---
 
@@ -111,30 +107,34 @@ npm run dev
 
 ---
 
-## 🔐 Default Evaluation Credentials
+## 🔐 First-Time Setup & Role Roles
 
-The system comes pre-seeded with default role-based accounts for instant demonstration:
+### First-Time Initialization:
+1. Navigate to `http://localhost:3000`.
+2. If the system is fresh, it automatically directs to the **Initial System Setup Wizard (`/setup`)**.
+3. Fill in the **Full Name**, **Work Email**, **Country**, **Admin Username**, and **Password**.
+4. Click **Complete Setup & Launch Portal** to create the root Administrator.
 
-| Role | Username | Password | Default Destination |
-| :--- | :--- | :--- | :--- |
-| **Fleet Manager** | `manager` | `admin123` | `/` (Central Fleet Monitoring Map) |
-| **Field Driver** | `driver1` | `driver123` | `/tracker` (GNSS Field Transmitter) |
+### Administrative User Provisioning:
+1. Log in as the **System Administrator**.
+2. Click the **Settings** gear icon in the top navigation bar.
+3. Use the in-place **User Management** panel to provision new users and assign roles:
+   * `System Administrator`
+   * `Fleet Operations Manager`
+   * `Field Agent / Driver`
 
 ---
 
-## 📱 Application Routes & Workflow
+## 📱 Application Routes
 
-| Route | Name | Purpose |
-| :--- | :--- | :--- |
-| **`/login`** | Authentication Portal | Role-based sign-in with quick 1-click test fill buttons |
-| **`/`** | Operations Dashboard | Interactive OpenStreetMap displaying live vehicle positions, telemetry stats, and breadcrumb route history |
-| **`/tracker`** | Field Transmitter | Mobile-friendly device transmitter with physical GPS and GNSS kinematic simulation toggle |
-
-### Demonstration Workflow:
-1. Open `http://localhost:3000/login` and sign in as **Manager** (`manager` / `admin123`). This opens the **Operations Dashboard**.
-2. Open a separate browser window (or mobile browser) at `http://localhost:3000/tracker` and sign in as **Driver** (`driver1` / `driver123`).
-3. On the Tracker screen, click **START**. (Enable *GNSS Simulation Mode* if presenting on a desktop or indoor laptop).
-4. Observe the live vehicle movement, speed telemetry, and historical breadcrumb path updating immediately on the Manager map canvas in real time.
+| Route | Purpose |
+| :--- | :--- |
+| **`/`** | Central Interactive Map & Operations Canvas with In-Place Live Tracking & Admin Settings Modal |
+| **`/setup`** | First-Time System Administrator Installation Wizard |
+| **`/login`** | Clean Production Authentication Portal |
+| **`/forgot-password`** | Credential Recovery & Security Policy Verification |
+| **`/reset-password`** | Secure Administrator Password Reset Form |
+| **`/tracker`** | Dedicated Mobile Transmitter Interface |
 
 ---
 
@@ -143,7 +143,6 @@ The system comes pre-seeded with default role-based accounts for instant demonst
 ```
 geo-tracker/
 ├── backend/
-│   ├── venv/                   # Python Virtual Environment (gitignored)
 │   ├── auth.py                 # JWT token generation & bcrypt password hashing
 │   ├── connection_manager.py   # WebSocket real-time connection manager
 │   ├── database.py             # SQLAlchemy engine & MySQL connection setup
@@ -154,16 +153,20 @@ geo-tracker/
 ├── database/
 │   └── schema.sql              # MySQL DDL table schemas & seed data
 ├── frontend/
-│   ├── public/                 # Static assets
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── login/page.tsx  # Authentication UI
-│   │   │   ├── tracker/page.tsx# Mobile/Web GNSS transmitter UI
-│   │   │   └── page.tsx        # Central operations map dashboard
+│   │   │   ├── forgot-password/page.tsx # Credential recovery
+│   │   │   ├── login/page.tsx           # Authentication portal
+│   │   │   ├── reset-password/page.tsx  # Password reset
+│   │   │   ├── setup/page.tsx           # Initial setup wizard
+│   │   │   ├── tracker/page.tsx         # Dedicated transmitter
+│   │   │   └── page.tsx                 # Central operations map dashboard
 │   │   ├── components/
-│   │   │   └── LiveMap.tsx     # Leaflet.js interactive map engine
+│   │   │   ├── AdminSettingsModal.tsx   # In-place user & role management modal
+│   │   │   ├── LiveMap.tsx              # Leaflet.js interactive map engine
+│   │   │   └── LiveTrackingTray.tsx     # In-place live tracking & HUD control tray
 │   │   └── lib/
-│   │       └── api.ts          # Backend API & WebSocket client interfaces
+│   │       └── api.ts                   # Backend API & WebSocket client interfaces
 │   ├── package.json            # Node.js dependencies
 │   └── tailwind.config.ts      # UI styling configuration
 └── README.md                   # Comprehensive project documentation

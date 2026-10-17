@@ -1,59 +1,56 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from typing import List, Optional
 import json
 import time
+import uuid
+from datetime import datetime, timedelta
 
 from database import engine, Base, get_db, SessionLocal
 from models import (
     User, LocationLog,
     UserState, LocationPoint,
-    UserRegisterRequest, UserLoginRequest, UserResponse, TokenResponse
+    UserLoginRequest, SystemSetupRequest, ForgotPasswordRequest, ResetPasswordRequest,
+    UserCreateAdminRequest, UserResponse, TokenResponse
 )
 from auth import hash_password, verify_password, create_access_token
 from connection_manager import manager
 
-# Create database tables automatically
-try:
-    Base.metadata.create_all(bind=engine)
-    print("[Database] Schema tables initialized successfully.")
-except Exception as e:
-    print(f"[Database] Table initialization notice: {e}")
-
-# Seed initial default users if table is empty
-def seed_default_users():
-    db = SessionLocal()
+# Ensure tables and schema alterations exist
+def init_and_migrate_db():
     try:
-        if db.query(User).count() == 0:
-            print("[Database] Seeding default accounts (manager & driver)...")
-            manager_user = User(
-                username="manager",
-                password_hash=hash_password("admin123"),
-                role="manager",
-                full_name="Fleet Operations Manager"
-            )
-            driver_user = User(
-                username="driver1",
-                password_hash=hash_password("driver123"),
-                role="driver",
-                full_name="Vehicle 01 - Field Driver"
-            )
-            db.add(manager_user)
-            db.add(driver_user)
-            db.commit()
-            print("[Database] Default users created: manager (admin123), driver1 (driver123)")
+        Base.metadata.create_all(bind=engine)
+        print("[Database] Schema tables initialized.")
     except Exception as e:
-        print(f"[Database] Seeding notice: {e}")
-    finally:
-        db.close()
+        print(f"[Database] Table initialization notice: {e}")
 
-seed_default_users()
+    # Auto-migrate any newly added columns if running against existing MySQL
+    try:
+        with engine.connect() as conn:
+            columns_to_check = [
+                ("email", "VARCHAR(100) NULL"),
+                ("country", "VARCHAR(100) NULL DEFAULT 'Pakistan'"),
+                ("reset_token", "VARCHAR(255) NULL"),
+                ("reset_token_expires", "DATETIME NULL"),
+            ]
+            for col_name, col_def in columns_to_check:
+                try:
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_def};"))
+                    conn.commit()
+                    print(f"[Migration] Added column '{col_name}' to users table.")
+                except Exception:
+                    pass # Column already exists
+    except Exception as e:
+        print(f"[Migration Notice] {e}")
+
+init_and_migrate_db()
 
 app = FastAPI(
     title="GNSS Real-Time Position Monitoring API",
-    description="FastAPI Backend with WebSockets, MySQL persistence, and role-based access",
-    version="1.0.0"
+    description="Enterprise GIS & Position Tracking System with MySQL 8.0, WebSockets, and Multi-Role Access Control",
+    version="1.1.0"
 )
 
 # Enable CORS for Next.js frontend
@@ -70,47 +67,81 @@ def root():
     return {
         "status": "online",
         "system": "GNSS-Based Real-Time Position Monitoring System",
+        "version": "1.1.0",
         "docs_url": "/docs",
         "timestamp": time.time()
     }
 
-# ================= AUTHENTICATION ENDPOINTS =================
+# ================= SYSTEM INITIALIZATION & ONBOARDING =================
 
-@app.post("/api/auth/register", response_model=UserResponse)
-def register(req: UserRegisterRequest, db: Session = Depends(get_db)):
-    """Register a new user account with role ('manager' or 'driver')"""
-    existing_user = db.query(User).filter(User.username == req.username).first()
-    if existing_user:
+@app.get("/api/system/status")
+def get_system_status(db: Session = Depends(get_db)):
+    """Check if the system has completed initial installation / setup"""
+    admin_count = db.query(User).filter(User.role == "admin").count()
+    return {
+        "is_initialized": admin_count > 0,
+        "admin_count": admin_count
+    }
+
+@app.post("/api/system/setup", response_model=TokenResponse)
+def system_setup(req: SystemSetupRequest, db: Session = Depends(get_db)):
+    """First-time system initialization wizard: Creates the Root System Administrator"""
+    existing_admin = db.query(User).filter(User.role == "admin").first()
+    if existing_admin:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered. Please choose another username."
+            detail="System is already initialized. Please sign in via the portal."
         )
 
-    role_val = req.role.lower() if req.role.lower() in ["manager", "driver"] else "driver"
-    new_user = User(
+    # Check for existing username or email
+    if db.query(User).filter(User.username == req.username).first():
+        raise HTTPException(status_code=400, detail="Username is already taken.")
+    if req.email and db.query(User).filter(User.email == req.email).first():
+        raise HTTPException(status_code=400, detail="Email is already registered.")
+
+    admin_user = User(
         username=req.username,
+        email=req.email,
+        full_name=req.full_name,
+        country=req.country or "Pakistan",
         password_hash=hash_password(req.password),
-        role=role_val,
-        full_name=req.full_name or req.username
+        role="admin",
+        is_active=True
     )
-    db.add(new_user)
+    db.add(admin_user)
     db.commit()
-    db.refresh(new_user)
-    return UserResponse(
-        id=new_user.id,
-        username=new_user.username,
-        role=new_user.role,
-        full_name=new_user.full_name
+    db.refresh(admin_user)
+
+    token = create_access_token({"sub": admin_user.username, "role": admin_user.role, "id": admin_user.id})
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        user=UserResponse(
+            id=admin_user.id,
+            username=admin_user.username,
+            email=admin_user.email,
+            role=admin_user.role,
+            full_name=admin_user.full_name,
+            country=admin_user.country,
+            is_active=admin_user.is_active
+        )
     )
+
+# ================= AUTHENTICATION & PASSWORD RECOVERY =================
 
 @app.post("/api/auth/login", response_model=TokenResponse)
 def login(req: UserLoginRequest, db: Session = Depends(get_db)):
-    """Authenticate user with username and password, returns JWT token and role"""
+    """Authenticate with username and password, returns role and session token"""
     user = db.query(User).filter(User.username == req.username).first()
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password"
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is inactive. Please contact your System Administrator."
         )
 
     token = create_access_token({"sub": user.username, "role": user.role, "id": user.id})
@@ -120,10 +151,142 @@ def login(req: UserLoginRequest, db: Session = Depends(get_db)):
         user=UserResponse(
             id=user.id,
             username=user.username,
+            email=user.email,
             role=user.role,
-            full_name=user.full_name
+            full_name=user.full_name,
+            country=user.country,
+            is_active=user.is_active
         )
     )
+
+@app.post("/api/auth/forgot-password")
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Forgot Password workflow:
+    - If user is System Administrator: Generates secure reset token & link.
+    - If user is Manager or Field Agent: Instructs them to confirm credentials with their Administrator.
+    """
+    clean_email = req.email.strip().lower()
+    user = db.query(User).filter(User.email == clean_email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No registered user found with this email address."
+        )
+
+    if user.role == "admin":
+        reset_token = str(uuid.uuid4())
+        user.reset_token = reset_token
+        user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+        db.commit()
+
+        return {
+            "status": "admin_reset",
+            "role": "admin",
+            "username": user.username,
+            "reset_token": reset_token,
+            "reset_link": f"/reset-password?token={reset_token}",
+            "message": f"Administrator identity verified for '{user.username}'. Please proceed to reset your password."
+        }
+    else:
+        # Standard user policy: Instruct to contact Administrator
+        return {
+            "status": "contact_admin",
+            "role": user.role,
+            "username": user.username,
+            "message": "Password recovery request submitted. Under organizational security policies, please contact your System Administrator to confirm your username and issue a new password."
+        }
+
+@app.post("/api/auth/reset-password")
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Reset password using verified reset token"""
+    user = db.query(User).filter(User.reset_token == req.token).first()
+    if not user or not user.reset_token_expires or user.reset_token_expires < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset token."
+        )
+
+    user.password_hash = hash_password(req.new_password)
+    user.reset_token = None
+    user.reset_token_expires = None
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": "Password reset successfully. You may now sign in with your new credentials."
+    }
+
+# ================= ADMIN USER MANAGEMENT =================
+
+@app.get("/api/admin/users", response_model=List[UserResponse])
+def get_all_managed_users(db: Session = Depends(get_db)):
+    """Retrieve all users in the system for admin settings"""
+    users = db.query(User).order_by(User.id.asc()).all()
+    return [
+        UserResponse(
+            id=u.id,
+            username=u.username,
+            email=u.email,
+            role=u.role,
+            full_name=u.full_name,
+            country=u.country,
+            is_active=u.is_active
+        )
+        for u in users
+    ]
+
+@app.post("/api/admin/users", response_model=UserResponse)
+def create_managed_user(req: UserCreateAdminRequest, db: Session = Depends(get_db)):
+    """Admin endpoint to create a new user and assign role ('admin', 'manager', 'agent')"""
+    if db.query(User).filter(User.username == req.username).first():
+        raise HTTPException(status_code=400, detail="Username is already taken.")
+    if req.email and db.query(User).filter(User.email == req.email).first():
+        raise HTTPException(status_code=400, detail="Email is already assigned to another user.")
+
+    role_val = req.role.lower() if req.role.lower() in ["admin", "manager", "agent", "driver"] else "agent"
+    if role_val == "driver":
+        role_val = "agent"
+
+    new_user = User(
+        username=req.username,
+        email=req.email,
+        full_name=req.full_name or req.username,
+        country=req.country or "Pakistan",
+        password_hash=hash_password(req.password),
+        role=role_val,
+        is_active=True
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return UserResponse(
+        id=new_user.id,
+        username=new_user.username,
+        email=new_user.email,
+        role=new_user.role,
+        full_name=new_user.full_name,
+        country=new_user.country,
+        is_active=new_user.is_active
+    )
+
+@app.delete("/api/admin/users/{user_id}")
+def delete_managed_user(user_id: int, db: Session = Depends(get_db)):
+    """Deactivate or remove a managed user"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Protect deleting the last admin
+    if user.role == "admin":
+        admin_count = db.query(User).filter(User.role == "admin").count()
+        if admin_count <= 1:
+            raise HTTPException(status_code=400, detail="Cannot delete the sole System Administrator.")
+
+    db.delete(user)
+    db.commit()
+    return {"status": "success", "message": f"User {user.username} deleted successfully."}
 
 # ================= GNSS TELEMETRY & ROUTE HISTORY =================
 
@@ -145,19 +308,17 @@ def get_user_history(user_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         print(f"[History DB Query] Notice: {e}")
 
-    # Fallback to in-memory active cache
     return manager.get_user_history(user_id)
 
 @app.post("/api/ping")
 async def ping_location(payload: dict, db: Session = Depends(get_db)):
-    """HTTP fallback endpoint for GNSS location pings and database logging"""
+    """HTTP endpoint for GNSS location pings and database logging"""
     user_id = payload.get("user_id")
     user_name = payload.get("user_name", "Vehicle")
     loc = payload.get("location", {})
     if not user_id or "lat" not in loc or "lng" not in loc:
         raise HTTPException(status_code=400, detail="Missing user_id, lat or lng")
 
-    # Persist log to MySQL
     try:
         log_entry = LocationLog(
             device_id=user_id,
@@ -183,7 +344,7 @@ async def ping_location(payload: dict, db: Session = Depends(get_db)):
 async def websocket_dashboard(websocket: WebSocket):
     """
     WebSocket connection for Central Position Monitoring Web Dashboard.
-    Streams real-time updates of all field devices directly onto the digital map.
+    Streams real-time updates of all field devices directly onto the digital map canvas.
     """
     await manager.connect_dashboard(websocket)
     try:
@@ -227,7 +388,6 @@ async def websocket_tracker(websocket: WebSocket, user_id: str, name: str = Quer
                     }
                     user_name = data.get("user_name", name)
 
-                    # Persist coordinate to database
                     try:
                         db = SessionLocal()
                         log_entry = LocationLog(
@@ -244,7 +404,7 @@ async def websocket_tracker(websocket: WebSocket, user_id: str, name: str = Quer
                         db.commit()
                         db.close()
                     except Exception as db_err:
-                        pass # Continue uninterrupted stream
+                        pass
 
                     await manager.update_user_location(user_id, user_name, loc)
 
