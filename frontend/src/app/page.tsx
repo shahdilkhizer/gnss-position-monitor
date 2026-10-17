@@ -680,7 +680,6 @@ export default function HomePage() {
         isOpen={isTrackingTrayOpen}
         onClose={() => setIsTrackingTrayOpen(false)}
         isTracking={isTracking}
-        isSimulating={isSimulating}
         speed={trackingSpeed}
         accuracy={trackingAccuracy}
         batteryLevel={batteryLevel}
@@ -695,7 +694,6 @@ export default function HomePage() {
           }
         }}
         onToggleTracking={isTracking ? stopTracking : startTracking}
-        onToggleSimulation={(enabled) => setIsSimulating(enabled)}
       />
 
       {/* In-Place Admin Settings Modal (Update users, roles, and credentials) */}

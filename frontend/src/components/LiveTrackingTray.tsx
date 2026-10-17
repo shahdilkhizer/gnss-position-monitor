@@ -4,7 +4,6 @@ import React from "react";
 import {
   Radio,
   Power,
-  Sliders,
   Battery,
   Navigation,
   X,
@@ -20,7 +19,7 @@ interface LiveTrackingTrayProps {
   isOpen: boolean;
   onClose: () => void;
   isTracking: boolean;
-  isSimulating: boolean;
+  isSimulating?: boolean;
   speed: number;
   accuracy: number;
   batteryLevel: number;
@@ -29,7 +28,7 @@ interface LiveTrackingTrayProps {
   deviceName: string;
   onDeviceNameChange: (name: string) => void;
   onToggleTracking: () => void;
-  onToggleSimulation: (enabled: boolean) => void;
+  onToggleSimulation?: (enabled: boolean) => void;
   isAdmin?: boolean;
 }
 
@@ -167,27 +166,6 @@ export default function LiveTrackingTray({
               <span className="text-base font-bold font-mono text-blue-400">{pingCount}</span>
               <span className="text-[9px] text-slate-500 block">sent</span>
             </div>
-          </div>
-
-          {/* Simulation Mode Toggle */}
-          <div className="bg-slate-950/70 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Sliders className="w-3.5 h-3.5 text-blue-400" />
-              <div>
-                <p className="text-xs font-semibold text-white">GNSS Simulation Mode</p>
-                <p className="text-[10px] text-slate-400">Generate kinematic path for indoor presentation</p>
-              </div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isSimulating}
-                disabled={isTracking}
-                onChange={(e) => onToggleSimulation(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
           </div>
 
           {/* Current Coordinates */}

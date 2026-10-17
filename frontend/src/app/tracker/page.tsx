@@ -393,28 +393,6 @@ export default function TrackerPage() {
             </div>
           </div>
 
-          {/* Simulation Toggle */}
-          <div className="bg-slate-900/60 border border-slate-700/60 rounded-lg p-3 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Sliders className="w-4 h-4 text-blue-400" />
-              <div>
-                <p className="text-xs font-semibold text-white">GNSS Simulation Mode</p>
-                <p className="text-[10px] text-slate-400">Generates motion path for indoor/lab demos</p>
-              </div>
-            </div>
-
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isSimulating}
-                disabled={isTracking}
-                onChange={(e) => setIsSimulating(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-
           {/* Current Coordinates Banner */}
           {currentCoords && (
             <div className="bg-slate-900/90 border border-slate-700/60 rounded-lg p-2.5 text-center font-mono text-xs text-slate-300">
