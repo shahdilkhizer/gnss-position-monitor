@@ -1,8 +1,10 @@
 @echo off
-echo ====================================================
-echo Starting Python FastAPI Multi-Tenant Backend Server
-echo API Docs: http://localhost:8000/docs
-echo ====================================================
+title GNSS Backend Server
+echo ====================================================================
+echo  Starting GNSS Real-Time Position Monitoring API (FastAPI)
+echo  API Documentation: http://localhost:8000/docs
+echo ====================================================================
+echo.
 cd backend
 call venv\Scripts\activate.bat
 uvicorn main:app --reload --host 0.0.0.0 --port 8000

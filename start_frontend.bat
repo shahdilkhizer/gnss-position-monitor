@@ -1,7 +1,9 @@
 @echo off
-echo ====================================================
-echo Starting Next.js Live Map Tracking Frontend
-echo App URL: http://localhost:3000
-echo ====================================================
+title GNSS Web Application
+echo ====================================================================
+echo  Starting GNSS Position Monitor Web Frontend (Next.js)
+echo  Application URL: http://localhost:3000
+echo ====================================================================
+echo.
 cd frontend
 npm run dev

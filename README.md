@@ -70,7 +70,17 @@ JWT_SECRET=gnss_super_secret_university_key_2026
 
 ## 🚀 Execution Guide
 
-### 1. Start the Backend API Server (Python FastAPI)
+### ⚡ Option A: 1-Click Launch (Windows)
+Simply double-click **`run_app.bat`** in the project root directory:
+* Automatically launches the Python FastAPI backend on Port 8000.
+* Automatically launches the Next.js frontend on Port 3000.
+* Automatically opens your default web browser to `http://localhost:3000`.
+
+---
+
+### 💻 Option B: Manual Terminal Execution
+
+#### 1. Start the Backend API Server (Python FastAPI)
 
 Open a terminal in the project directory:
 ```powershell
