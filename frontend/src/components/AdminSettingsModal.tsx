@@ -33,9 +33,10 @@ interface AdminSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: { username: string; role: string; full_name?: string } | null;
+  onUserUpdated?: (user: ManagedUser) => void;
 }
 
-export default function AdminSettingsModal({ isOpen, onClose, currentUser }: AdminSettingsModalProps) {
+export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUserUpdated }: AdminSettingsModalProps) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [activeTab, setActiveTab] = useState<"users" | "create" | "edit" | "system">("users");
   const [isLoading, setIsLoading] = useState(false);
@@ -122,6 +123,9 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser }: Adm
       }
 
       setActionMsg({ type: "success", text: `User '${data.username}' updated successfully in MySQL.` });
+      if (onUserUpdated && currentUser && data.username === currentUser.username) {
+        onUserUpdated(data);
+      }
       fetchUsers();
       setActiveTab("users");
       setEditingUser(null);
