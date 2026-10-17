@@ -52,6 +52,7 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
 
   // Form state for editing existing user
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
+  const [editUsername, setEditUsername] = useState("");
   const [editFullName, setEditFullName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editCountry, setEditCountry] = useState("Pakistan");
@@ -83,6 +84,7 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
 
   const startEditUser = (user: ManagedUser) => {
     setEditingUser(user);
+    setEditUsername(user.username);
     setEditFullName(user.full_name || user.username);
     setEditEmail(user.email || "");
     setEditCountry(user.country || "Pakistan");
@@ -100,6 +102,7 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
 
     try {
       const payload: any = {
+        username: editUsername.trim(),
         full_name: editFullName.trim(),
         email: editEmail.trim(),
         country: editCountry.trim(),
@@ -371,19 +374,41 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wider">
-                    Full Name
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
+                    Username (Used for Login)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs font-bold">@</span>
+                    <input
+                      type="text"
+                      required
+                      value={editUsername}
+                      onChange={(e) => setEditUsername(e.target.value)}
+                      placeholder="e.g. driver1"
+                      className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-mono font-bold"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Required to sign in to the portal at /login</span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
+                    Full Name / Display Name
                   </label>
                   <input
                     type="text"
                     required
                     value={editFullName}
                     onChange={(e) => setEditFullName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
+                    placeholder="e.g. Vehicle 01 - Field Driver"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wider">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
                     Email Address
                   </label>
                   <input
@@ -391,45 +416,49 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
                     required
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
+                    placeholder="e.g. agent@ubit.edu.pk"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wider">
-                    Role Privilege
-                  </label>
-                  <select
-                    value={editRole}
-                    onChange={(e) => setEditRole(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
-                  >
-                    <option value="agent">Field Agent (Driver)</option>
-                    <option value="manager">Fleet Manager</option>
-                    <option value="admin">System Administrator</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wider">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
                     Country
                   </label>
                   <input
                     type="text"
                     value={editCountry}
                     onChange={(e) => setEditCountry(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                    placeholder="Pakistan"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wider">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
+                    Role Privilege
+                  </label>
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
+                  >
+                    <option value="agent">Field Agent (Driver)</option>
+                    <option value="manager">Fleet Operations Manager</option>
+                    <option value="admin">System Administrator</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
                     Account Status
                   </label>
                   <select
                     value={editIsActive ? "active" : "inactive"}
                     onChange={(e) => setEditIsActive(e.target.value === "active")}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-medium"
                   >
                     <option value="active">Active (Access Allowed)</option>
                     <option value="inactive">Suspended (Access Blocked)</option>
@@ -438,7 +467,7 @@ export default function AdminSettingsModal({ isOpen, onClose, currentUser, onUse
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wider">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
                   Reset Password (Leave blank to keep current)
                 </label>
                 <input

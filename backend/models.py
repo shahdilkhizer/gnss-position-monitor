@@ -118,6 +118,7 @@ class UserProfileUpdateRequest(BaseModel):
     new_password: Optional[str] = None
 
 class AdminUserUpdateRequest(BaseModel):
+    username: Optional[str] = None
     full_name: Optional[str] = None
     email: Optional[str] = None
     country: Optional[str] = None

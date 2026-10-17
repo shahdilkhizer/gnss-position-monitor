@@ -335,6 +335,13 @@ def admin_update_user(user_id: int, req: AdminUserUpdateRequest, db: Session = D
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
+    if req.username and req.username.strip() and req.username.strip() != user.username:
+        clean_username = req.username.strip()
+        conflict = db.query(User).filter(User.username == clean_username, User.id != user.id).first()
+        if conflict:
+            raise HTTPException(status_code=400, detail="Username is already taken by another account.")
+        user.username = clean_username
+
     if req.email and req.email != user.email:
         clean_email = req.email.strip().lower()
         conflict = db.query(User).filter(User.email == clean_email, User.id != user.id).first()
